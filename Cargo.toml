@@ -1,0 +1,29 @@
+[package]
+name = "rustcrawler"
+version = "0.1.0"
+edition = "2021"
+authors = ["Pedro Nieto <pedrete999@gmail.com>"]
+description = "A fast, concurrent web crawler built in Rust"
+license = "MIT"
+
+[[bin]]
+name = "rustcrawler"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+scraper = "0.20"
+clap = { version = "4.0", features = ["derive"] }
+dashmap = "6.0"
+url = "2.5"
+anyhow = "1.0"
+thiserror = "1.0"
+log = "0.4"
+env_logger = "0.11"
+futures = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+tokio-test = "0.4"
