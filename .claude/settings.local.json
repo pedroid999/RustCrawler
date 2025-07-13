@@ -7,7 +7,9 @@
       "Bash(rustup:*)",
       "Bash(rustfmt:*)",
       "Bash(clippy:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   },

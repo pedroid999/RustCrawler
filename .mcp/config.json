@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "rustcrawler": {
+      "command": "./target/release/rustcrawler-mcp",
+      "args": [],
+      "env": {
+        "RUST_LOG": "info"
+      }
+    }
+  }
+}
