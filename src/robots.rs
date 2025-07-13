@@ -65,41 +65,41 @@ impl RobotsInfo {
 
     fn parse_robots_txt(&self, content: &str, user_agent: &str, url: &str) -> bool {
         let mut in_relevant_section = false;
-        
+
         for line in content.lines() {
             let line = line.trim();
-            
+
             // Skip comments and empty lines
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
-            
+
             // Check for User-agent directive
             if line.to_lowercase().starts_with("user-agent:") {
                 if let Some(agent) = line.split(':').nth(1) {
                     let current_user_agent = agent.trim().to_lowercase();
-                    in_relevant_section = current_user_agent == "*" || 
-                                        current_user_agent == user_agent.to_lowercase() ||
-                                        user_agent.to_lowercase().contains(&current_user_agent);
+                    in_relevant_section = current_user_agent == "*"
+                        || current_user_agent == user_agent.to_lowercase()
+                        || user_agent.to_lowercase().contains(&current_user_agent);
                 }
                 continue;
             }
-            
+
             // Only process rules if we're in a relevant section
             if !in_relevant_section {
                 continue;
             }
-            
+
             // Check for Disallow directive
             if line.to_lowercase().starts_with("disallow:") {
                 if let Some(path) = line.split(':').nth(1) {
                     let path = path.trim();
-                    
+
                     // Empty disallow means allow everything
                     if path.is_empty() {
                         continue;
                     }
-                    
+
                     // Check if URL matches the disallowed path
                     if let Ok(parsed_url) = Url::parse(url) {
                         let url_path = parsed_url.path();
@@ -109,12 +109,12 @@ impl RobotsInfo {
                     }
                 }
             }
-            
+
             // Check for Allow directive (takes precedence over Disallow)
             if line.to_lowercase().starts_with("allow:") {
                 if let Some(path) = line.split(':').nth(1) {
                     let path = path.trim();
-                    
+
                     // Check if URL matches the allowed path
                     if let Ok(parsed_url) = Url::parse(url) {
                         let url_path = parsed_url.path();
@@ -125,7 +125,7 @@ impl RobotsInfo {
                 }
             }
         }
-        
+
         true // Allow by default
     }
 
@@ -172,7 +172,7 @@ impl RobotsManager {
 
         // Check if URL is allowed
         let allowed = robots_info.can_fetch(&self.user_agent, url.as_str());
-        
+
         if !allowed {
             debug!("URL blocked by robots.txt: {}", url);
         }
@@ -210,8 +210,9 @@ impl RobotsManager {
 
         // Fetch robots.txt
         let robots_info = self.fetch_robots(domain).await?;
-        self.robots_cache.insert(domain.to_string(), robots_info.clone());
-        
+        self.robots_cache
+            .insert(domain.to_string(), robots_info.clone());
+
         Ok(robots_info)
     }
 
@@ -233,7 +234,11 @@ impl RobotsManager {
                         }
                     }
                 } else {
-                    debug!("robots.txt not found for {} (status: {})", domain, response.status());
+                    debug!(
+                        "robots.txt not found for {} (status: {})",
+                        domain,
+                        response.status()
+                    );
                     Ok(RobotsInfo::new()) // No robots.txt means crawling is allowed
                 }
             }

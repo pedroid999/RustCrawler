@@ -1,0 +1,17 @@
+# Clippy configuration for RustCrawler
+# This file configures Clippy linting rules for consistent code quality
+
+# Minimum supported Rust version
+msrv = "1.70.0"
+
+# Configuration for specific lints
+doc-valid-idents = ["RustCrawler", "tokio", "reqwest", "HTML", "HTTP", "URL", "API"]
+type-complexity-threshold = 250
+single-char-binding-names-threshold = 4
+trivial-copy-size-limit = 64
+cognitive-complexity-threshold = 30
+
+# Allow some pedantic lints that may be too strict for this project
+allowed-prefixes = ["crawl", "fetch", "parse"]
+too-many-arguments-threshold = 8
+too-many-lines-threshold = 150

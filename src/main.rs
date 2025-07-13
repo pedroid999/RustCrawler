@@ -69,19 +69,23 @@ async fn main() {
         Ok(results) => {
             info!("Crawling completed successfully!");
             info!("Total pages crawled: {}", results.len());
-            
+
             // Print summary statistics
             let total_time: u128 = results.iter().map(|r| r.crawl_time.as_millis()).sum();
-            let avg_time = if !results.is_empty() { total_time / results.len() as u128 } else { 0 };
-            
+            let avg_time = if !results.is_empty() {
+                total_time / results.len() as u128
+            } else {
+                0
+            };
+
             info!("Average response time: {}ms", avg_time);
-            
+
             // Count status codes
             let mut status_counts = std::collections::HashMap::new();
             for result in &results {
                 *status_counts.entry(result.status_code).or_insert(0) += 1;
             }
-            
+
             info!("Status code distribution:");
             for (status, count) in status_counts {
                 info!("  {}: {}", status, count);
@@ -94,7 +98,10 @@ async fn main() {
     }
 }
 
-async fn run_crawler(config: CrawlerConfig, start_urls: Vec<String>) -> Result<Vec<crawler::CrawlResult>> {
+async fn run_crawler(
+    config: CrawlerConfig,
+    start_urls: Vec<String>,
+) -> Result<Vec<crawler::CrawlResult>> {
     // Create crawler
     let crawler = Crawler::new(config)?;
 
@@ -129,7 +136,7 @@ mod tests {
         };
 
         let _urls = ["https://httpbin.org/html".to_string()];
-        
+
         // This test just verifies the crawler can be created
         // Actual network tests would be more complex and require setup
         let result = Crawler::new(config);

@@ -71,12 +71,12 @@ impl Crawler {
         }
 
         if let Some(proxy_url) = &config.proxy {
-            let proxy = Proxy::all(proxy_url)
-                .context("Failed to create proxy")?;
+            let proxy = Proxy::all(proxy_url).context("Failed to create proxy")?;
             client_builder = client_builder.proxy(proxy);
         }
 
-        let client = client_builder.build()
+        let client = client_builder
+            .build()
             .context("Failed to build HTTP client")?;
 
         let robots_manager = RobotsManager::new(client.clone(), config.user_agent.clone());
@@ -93,10 +93,8 @@ impl Crawler {
 
     pub async fn crawl(&self, start_urls: Vec<String>) -> Result<Vec<CrawlResult>> {
         let mut results = Vec::new();
-        let mut current_urls: Vec<(String, usize)> = start_urls
-            .into_iter()
-            .map(|url| (url, 0))
-            .collect();
+        let mut current_urls: Vec<(String, usize)> =
+            start_urls.into_iter().map(|url| (url, 0)).collect();
 
         while !current_urls.is_empty() {
             // Check if we've reached max pages limit
@@ -169,7 +167,10 @@ impl Crawler {
 
     async fn crawl_single_url(&self, url: String, depth: usize) -> Result<CrawlResult> {
         // Acquire semaphore permit for concurrency control
-        let _permit = self.semaphore.acquire().await
+        let _permit = self
+            .semaphore
+            .acquire()
+            .await
             .context("Failed to acquire semaphore permit")?;
 
         // Rate limiting
@@ -181,12 +182,15 @@ impl Crawler {
         self.visited_urls.insert(url.clone());
 
         let start_time = Instant::now();
-        let parsed_url = Url::parse(&url)
-            .context("Failed to parse URL")?;
+        let parsed_url = Url::parse(&url).context("Failed to parse URL")?;
 
         // Check robots.txt compliance
         if self.config.respect_robots {
-            if !self.robots_manager.check_robots_compliance(&parsed_url).await? {
+            if !self
+                .robots_manager
+                .check_robots_compliance(&parsed_url)
+                .await?
+            {
                 return Err(anyhow::anyhow!("URL blocked by robots.txt: {}", url));
             }
 
@@ -198,7 +202,9 @@ impl Crawler {
         }
 
         // Perform HTTP request with retries
-        let response = self.fetch_with_retries(&url, self.config.max_retries).await?;
+        let response = self
+            .fetch_with_retries(&url, self.config.max_retries)
+            .await?;
         let status_code = response.status().as_u16();
 
         // Update last access time for robots.txt compliance
@@ -207,7 +213,9 @@ impl Crawler {
         }
 
         // Parse HTML content
-        let html_content = response.text().await
+        let html_content = response
+            .text()
+            .await
             .context("Failed to read response body")?;
 
         let (title, links) = self.parse_html(&html_content, &parsed_url)?;
@@ -234,32 +242,50 @@ impl Crawler {
             match self.client.get(url).send().await {
                 Ok(response) => {
                     let status = response.status();
-                    
+
                     // Check if we should retry based on status code
-                    if (status.is_server_error() || status == StatusCode::TOO_MANY_REQUESTS) && attempt < max_retries {
+                    if (status.is_server_error() || status == StatusCode::TOO_MANY_REQUESTS)
+                        && attempt < max_retries
+                    {
                         let delay = Duration::from_secs(2_u64.pow(attempt as u32));
-                        warn!("HTTP {} for {}, retrying in {:?} (attempt {}/{})", 
-                              status, url, delay, attempt + 1, max_retries + 1);
+                        warn!(
+                            "HTTP {} for {}, retrying in {:?} (attempt {}/{})",
+                            status,
+                            url,
+                            delay,
+                            attempt + 1,
+                            max_retries + 1
+                        );
                         sleep(delay).await;
                         continue;
                     }
-                    
+
                     return Ok(response);
                 }
                 Err(e) => {
                     last_error = Some(e);
                     if attempt < max_retries {
                         let delay = Duration::from_secs(2_u64.pow(attempt as u32));
-                        warn!("Request failed for {}, retrying in {:?} (attempt {}/{}): {}", 
-                              url, delay, attempt + 1, max_retries + 1, last_error.as_ref().unwrap());
+                        warn!(
+                            "Request failed for {}, retrying in {:?} (attempt {}/{}): {}",
+                            url,
+                            delay,
+                            attempt + 1,
+                            max_retries + 1,
+                            last_error.as_ref().unwrap()
+                        );
                         sleep(delay).await;
                     }
                 }
             }
         }
 
-        Err(anyhow::anyhow!("Failed to fetch {} after {} attempts: {}", 
-                           url, max_retries + 1, last_error.unwrap()))
+        Err(anyhow::anyhow!(
+            "Failed to fetch {} after {} attempts: {}",
+            url,
+            max_retries + 1,
+            last_error.unwrap()
+        ))
     }
 
     fn parse_html(&self, html: &str, base_url: &Url) -> Result<(Option<String>, Vec<String>)> {
@@ -268,7 +294,7 @@ impl Crawler {
         // Extract title
         let title_selector = Selector::parse("title")
             .map_err(|e| anyhow::anyhow!("Failed to parse title selector: {}", e))?;
-        
+
         let title = document
             .select(&title_selector)
             .next()

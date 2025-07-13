@@ -10,11 +10,7 @@ use url::Url;
     long_about = "RustCrawler is a high-performance web crawler that respects robots.txt, supports concurrent crawling with rate limiting, and includes retry mechanisms with exponential backoff."
 )]
 pub struct CliArgs {
-    #[arg(
-        help = "Starting URL(s) to crawl",
-        required = true,
-        value_name = "URL"
-    )]
+    #[arg(help = "Starting URL(s) to crawl", required = true, value_name = "URL")]
     pub urls: Vec<String>,
 
     #[arg(
@@ -112,8 +108,7 @@ impl CliArgs {
     pub fn validate(&self) -> anyhow::Result<()> {
         // Validate URLs
         for url_str in &self.urls {
-            Url::parse(url_str)
-                .map_err(|e| anyhow::anyhow!("Invalid URL '{}': {}", url_str, e))?;
+            Url::parse(url_str).map_err(|e| anyhow::anyhow!("Invalid URL '{}': {}", url_str, e))?;
         }
 
         // Validate proxy URL if provided
