@@ -10,12 +10,15 @@
       "Bash(git add:*)",
       "WebFetch(domain:github.com)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "memory-bank",
-    "sequential-thinking"
+    "sequential-thinking",
+    "notionApi"
   ]
 }
