@@ -32,24 +32,34 @@ impl RustCrawlerMcpServer {
     }
 
     pub async fn handle_tool_call(&self, tool_name: &str, arguments: Value) -> Result<String> {
-        match tool_name {
-            "crawl_website" => {
-                let crawl_tool = CrawlTool::new(
-                    self.crawler.clone(),
-                    self.crawl_results.clone(),
-                    self.stats.clone(),
-                );
-                crawl_tool.execute(arguments).await
+        // Add timeout for tool calls to prevent hanging
+        let timeout_duration = std::time::Duration::from_secs(30);
+        
+        let result = tokio::time::timeout(timeout_duration, async {
+            match tool_name {
+                "crawl_website" => {
+                    let crawl_tool = CrawlTool::new(
+                        self.crawler.clone(),
+                        self.crawl_results.clone(),
+                        self.stats.clone(),
+                    );
+                    crawl_tool.execute(arguments).await
+                }
+                "get_robots_txt" => {
+                    let robots_tool = GetRobotsTool::new();
+                    robots_tool.execute(arguments).await
+                }
+                "get_crawl_stats" => {
+                    let stats_tool = GetStatsTool::new(self.stats.clone());
+                    stats_tool.execute(arguments).await
+                }
+                _ => Err(anyhow::anyhow!("Unknown tool: {}", tool_name)),
             }
-            "get_robots_txt" => {
-                let robots_tool = GetRobotsTool::new();
-                robots_tool.execute(arguments).await
-            }
-            "get_crawl_stats" => {
-                let stats_tool = GetStatsTool::new(self.stats.clone());
-                stats_tool.execute(arguments).await
-            }
-            _ => Err(anyhow::anyhow!("Unknown tool: {}", tool_name)),
+        }).await;
+
+        match result {
+            Ok(result) => result,
+            Err(_) => Err(anyhow::anyhow!("Tool call timed out after 30 seconds")),
         }
     }
 
@@ -57,7 +67,7 @@ impl RustCrawlerMcpServer {
         if uri.starts_with("crawl://results/") {
             let session_id = uri.strip_prefix("crawl://results/").unwrap();
             let results = self.crawl_results.read().await;
-            
+
             if let Some(result) = results.get(session_id) {
                 Ok(serde_json::to_string_pretty(result)?)
             } else {
@@ -84,16 +94,19 @@ impl RustCrawlerMcpServer {
                             "description": "The starting URL to crawl"
                         },
                         "max_depth": {
-                            "type": "number",
-                            "description": "Maximum crawl depth (default: 1)"
+                            "type": "integer",
+                            "description": "Maximum crawl depth (default: 1)",
+                            "minimum": 1
                         },
                         "max_pages": {
-                            "type": "number",
-                            "description": "Maximum number of pages to crawl (default: 10)"
+                            "type": "integer",
+                            "description": "Maximum number of pages to crawl (default: 10)",
+                            "minimum": 1
                         },
                         "rate_limit": {
                             "type": "number",
-                            "description": "Rate limit in requests per second (default: 1)"
+                            "description": "Rate limit in requests per second (default: 1)",
+                            "minimum": 0
                         },
                         "respect_robots": {
                             "type": "boolean",
@@ -104,7 +117,8 @@ impl RustCrawlerMcpServer {
                             "description": "Whether to follow HTTP redirects (default: true)"
                         }
                     },
-                    "required": ["url"]
+                    "required": ["url"],
+                    "additionalProperties": false
                 }
             }),
             serde_json::json!({
@@ -118,7 +132,8 @@ impl RustCrawlerMcpServer {
                             "description": "The domain to fetch robots.txt from"
                         }
                     },
-                    "required": ["domain"]
+                    "required": ["domain"],
+                    "additionalProperties": false
                 }
             }),
             serde_json::json!({
@@ -126,9 +141,10 @@ impl RustCrawlerMcpServer {
                 "description": "Get statistics about recent crawl operations",
                 "inputSchema": {
                     "type": "object",
-                    "properties": {}
+                    "properties": {},
+                    "additionalProperties": false
                 }
-            })
+            }),
         ]
     }
 
@@ -145,7 +161,7 @@ impl RustCrawlerMcpServer {
                 "name": "Crawl Statistics",
                 "description": "Current crawling statistics and metrics",
                 "mimeType": "application/json"
-            })
+            }),
         ]
     }
 }

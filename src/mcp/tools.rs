@@ -8,7 +8,6 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::crawler::{Crawler, CrawlerConfig};
-use crate::robots::RobotsManager;
 
 pub struct CrawlTool {
     crawler: Arc<RwLock<Option<Crawler>>>,
@@ -40,20 +39,20 @@ impl CrawlTool {
         let respect_robots = arguments["respect_robots"].as_bool().unwrap_or(true);
         let follow_redirects = arguments["follow_redirects"].as_bool().unwrap_or(true);
 
-        // Create crawler configuration
+        // Create crawler configuration - optimized for MCP usage
         let config = CrawlerConfig {
-            max_concurrency: 10,
+            max_concurrency: 3, // Reduced concurrency to avoid rate limiting
             user_agent: "RustCrawler-MCP/0.1.0".to_string(),
-            timeout: std::time::Duration::from_secs(30),
-            max_retries: 3,
+            timeout: std::time::Duration::from_secs(10), // Reduced timeout for faster response
+            max_retries: 2, // Reduced retries for faster response
             rate_limit: if rate_limit > 0.0 {
                 Some(std::time::Duration::from_secs_f64(1.0 / rate_limit))
             } else {
-                None
+                Some(std::time::Duration::from_millis(500)) // Default rate limit to be respectful
             },
             proxy: None,
-            max_pages,
-            max_depth: Some(max_depth),
+            max_pages: max_pages.map(|p| p.min(20)), // Limit max pages to prevent long runs
+            max_depth: Some(max_depth.min(3)), // Limit max depth to prevent deep crawls
             respect_robots,
             follow_redirects,
         };
@@ -72,7 +71,7 @@ impl CrawlTool {
         // Perform crawl
         let crawler_guard = self.crawler.read().await;
         let crawler = crawler_guard.as_ref().unwrap();
-        
+
         let start_time = SystemTime::now();
         let results = crawler.crawl(vec![url.to_string()]).await?;
         let crawl_duration = start_time.elapsed()?.as_secs();
@@ -113,8 +112,12 @@ impl CrawlTool {
         {
             let mut stats_guard = self.stats.write().await;
             *stats_guard.entry("total_crawls".to_string()).or_insert(0) += 1;
-            *stats_guard.entry("total_pages_crawled".to_string()).or_insert(0) += results.len() as u64;
-            *stats_guard.entry("total_crawl_time_seconds".to_string()).or_insert(0) += crawl_duration;
+            *stats_guard
+                .entry("total_pages_crawled".to_string())
+                .or_insert(0) += results.len() as u64;
+            *stats_guard
+                .entry("total_crawl_time_seconds".to_string())
+                .or_insert(0) += crawl_duration;
         }
 
         Ok(format!(
@@ -142,16 +145,12 @@ impl GetRobotsTool {
         // Create a simple HTTP client to fetch robots.txt
         let client = reqwest::Client::new();
         let robots_url = format!("https://{}/robots.txt", domain);
-        
+
         let response = client.get(&robots_url).send().await?;
-        
+
         if response.status().is_success() {
             let content = response.text().await?;
-            Ok(format!(
-                "Robots.txt for {}:\n\n{}",
-                domain,
-                content
-            ))
+            Ok(format!("Robots.txt for {}:\n\n{}", domain, content))
         } else {
             Ok(format!(
                 "No robots.txt found for {} (HTTP {})",
@@ -173,7 +172,7 @@ impl GetStatsTool {
 
     pub async fn execute(&self, _arguments: Value) -> Result<String> {
         let stats = self.stats.read().await;
-        
+
         if stats.is_empty() {
             Ok("No crawl statistics available yet.".to_string())
         } else {

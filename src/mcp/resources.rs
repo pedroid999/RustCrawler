@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CrawlSession {
@@ -75,7 +75,7 @@ impl CrawlStatistics {
     pub fn update_from_session(&mut self, session: &CrawlSession) {
         self.total_sessions += 1;
         self.total_pages_crawled += session.pages_crawled as u64;
-        
+
         if let Some(end_time) = session.end_time {
             let duration = end_time.saturating_sub(session.start_time);
             self.total_crawl_time_seconds += duration;
@@ -83,18 +83,19 @@ impl CrawlStatistics {
 
         // Update averages
         if self.total_sessions > 0 {
-            self.average_pages_per_session = 
+            self.average_pages_per_session =
                 self.total_pages_crawled as f64 / self.total_sessions as f64;
         }
 
         if self.total_pages_crawled > 0 && self.total_crawl_time_seconds > 0 {
-            self.average_crawl_time_per_page_ms = 
+            self.average_crawl_time_per_page_ms =
                 (self.total_crawl_time_seconds * 1000) as f64 / self.total_pages_crawled as f64;
         }
 
         // Update status code distribution
         for result in &session.results {
-            *self.status_code_distribution
+            *self
+                .status_code_distribution
                 .entry(result.status_code)
                 .or_insert(0) += 1;
         }

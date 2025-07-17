@@ -150,7 +150,7 @@ impl Crawler {
                             }
                         }
 
-                        println!("{}", crawl_result.format_output());
+                        debug!("Crawled: {}", crawl_result.url);
                         results.push(crawl_result);
                     }
                     Err(e) => {
